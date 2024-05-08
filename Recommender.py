@@ -219,3 +219,104 @@ class Recommender:
             "Most Prolific Author": most_common_author,
             "Top Publisher": most_common_publisher
         }
+
+    def searchTVMovies(self, type, title, director, actor, genre):
+        """Search shows based on type and various attributes."""
+        if type not in ["Movie", "TV Show"]:
+            return "No Results"
+        results = []
+        for show in self.__shows.values():
+            if show.get_show_type() == type:
+                if title and title.lower() not in show.get_title().lower():
+                    continue
+                if director and director.lower() not in show.get_director().lower():
+                    continue
+                if actor:
+                    if not any(actor.lower() in cast_member.lower() for cast_member in show.get_cast().split(', ')):
+                        continue
+                if genre:
+                    if not any(genre.lower().strip() in g.lower() for g in show.get_listed_in().split(',')):
+                        continue
+                results.append(show)
+        if not results:
+            return "No Results"
+        return self.format_results(results)
+
+
+
+
+        if not results:
+            print("No matching results found.")
+            return "No Results"
+        return self.format_results(results)
+
+    def format_results(self, results):
+        output =""
+        for show in results:
+            output += f"Title: {show.get_title()}\n"
+            output += f"Director: {show.get_director()}\n"
+            output += f"Cast: {show.get_cast()}\n"
+            output += f"Genre(s): {show.get_listed_in()}\n\n"
+        return output
+
+        header = f"{'Title':<{max_title_len}} {'Director':<{max_director_len}} {'Cast':<{max_cast_len}} {'Genre':<{max_genre_len}}"
+        output = header + "\n" + "-" * len(header) + "\n"
+        for show in results:
+            output += f"{show.get_title():<{max_title_len}} {show.get_director():<{max_director_len}} {show.get_cast():<{max_cast_len}} {show.get_listed_in():<{max_genre_len}}\n"
+        return output
+
+    def searchBooks(self, title, authors, publisher):
+        if not title and not authors and not publisher:
+            messagebox.showerror("Error", "Please enter information for the Title, Author, and/or Publisher.")
+            return "No Results"
+
+        results = []
+        for book in self.__books.values():
+            matches_title = title.lower() in book.get_title().lower() if title else True
+            matches_author = authors.lower() in book.get_authors().lower() if authors else True
+            matches_publisher = publisher.lower() in book.get_publisher().lower() if publisher else True
+
+            if matches_title and matches_author and matches_publisher:
+                results.append(book)
+
+        if not results:
+            return "No Results"
+
+        # Formatting results
+        output = "Title\t\tAuthor\t\tPublisher\n"
+        output += "\n".join(f"{book.get_title()}\t\t{book.get_authors()}\t\t{book.get_publisher()}" for book in results)
+        return output
+
+    def get_recommendations(self, media_type, title):
+        # Load data (normally, you'd do this once, not every time a recommendation is sought)
+        self.__shows['1'] = Show('1', 'The Great Adventure', '8.0', 'Movie', 'John Doe', 'John Actor', 'US', '2022-01-01',
+                               '2022', 'PG-13', '120', 'Adventure, Comedy', 'An adventurous journey.')
+        self.__books['101'] = Book('101', 'Adventures in Programming', '4.0', 'Charles Babbage', '1234567890',
+                                 '987654321', 'en', '300', '100', '2019-01-01', 'Tech __books Publishing')
+        self.__associations['1'] = ['101']
+        self.__associations['101'] = ['1']
+
+        # Check media type and fetch recommendations
+        if media_type in ["Movie", "TV Show"]:
+            for show_id, show in self.__shows.items():
+                if  title.lower() in show.get_title().lower():
+                    # Finding related __books
+                    related_books = self.__associations.get(show_id, [])
+                    details = [
+                        f"Title: {self.__books[bid].get_title()}, Author: {self.__books[bid].get_authors()}, ISBN: {self.__books[bid].get_isbn()}"
+                        for bid in related_books if bid in self.__books]
+                    return "\n".join(details) if details else "No related __books found."
+            return "No results found for the provided title."
+
+        elif media_type == "Book":
+            for book_id, book in self.__books.items():
+                if book.get_title().lower() == title.lower():
+                    # Finding related __shows
+                    related_shows = self.__associations.get(book_id, [])
+                    details = [
+                        f"Title: {self.__shows[sid].get_title()}, Director: {self.__shows[sid].get_directors()}, Genres: {self.__shows[sid].get_genres()}"
+                        for sid in related_shows if sid in self.__shows]
+                    return "\n".join(details) if details else "No related __shows found."
+            return "No results found for the provided title."
+
+        return "Invalid media type provided."
